@@ -90,7 +90,7 @@ func New(ctx context.Context, config *Config) *Server {
 
 // Start starts the server and begins listening for requests
 func (s *Server) Start() error {
-	s.logger.Infof(s.ctx, "[server.start Starting server on %s", s.config.Addr)
+	s.logger.Infof(s.ctx, "[server.start] Starting server on %s", s.config.Addr)
 	return s.server.ListenAndServe()
 }
 
@@ -101,9 +101,9 @@ func (s *Server) StartTLS(certFile, keyFile string) error {
 }
 
 // Shutdown gracefully shuts down the server
-func (s *Server) Shutdown() error {
+func (s *Server) Shutdown(ctx context.Context) error {
 	s.logger.Infof(s.ctx, "[server.shutdown] Shutting down server")
-	return s.server.Shutdown(s.ctx)
+	return s.server.Shutdown(ctx)
 }
 
 // Router returns the server's router
@@ -179,7 +179,10 @@ func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Apply all middleware
+	// uses function composition to create a processing pipeline for HTTP requests
 	for i := len(r.middleware) - 1; i >= 0; i-- {
+		// each middleware function takes a handler and returns a new handler
+		// the middleware functions are applied in reverse order, so the outermost middleware is applied first
 		handlerFunc = r.middleware[i](handlerFunc)
 	}
 
