@@ -45,7 +45,7 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
-	// Attempt graceful shutdown using the timeout context
+	// Attempt graceful shutdown
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("Server shutdown failed: %v", err)
 	}
