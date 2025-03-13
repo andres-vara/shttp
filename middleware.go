@@ -11,6 +11,12 @@ import (
 	"github.com/andres-vara/slogr"
 )
 
+// Handler is a function that handles HTTP requests
+type Handler func(ctx context.Context, w http.ResponseWriter, r *http.Request) error
+
+// Middleware is a function that wraps a handler
+type Middleware func(Handler) Handler
+
 // ContextKey is a type for context keys to avoid collisions
 type ContextKey string
 
@@ -48,6 +54,7 @@ func GetClientIP(ctx context.Context) string {
 	}
 	return ""
 }
+
 // generates a random request ID
 func generateRequestID() string {
 	bytes := make([]byte, 16)
