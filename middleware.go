@@ -55,6 +55,16 @@ func GetClientIP(ctx context.Context) string {
 	return ""
 }
 
+// GetLogger retrieves the logger from the context
+func GetLogger(ctx context.Context) *slogr.Logger {
+	if logger, ok := ctx.Value(LoggerKey).(*slogr.Logger); ok {
+		return logger
+	}
+	// Return nil if logger is not found in context
+	return nil
+}
+
+
 // generates a random request ID
 func generateRequestID() string {
 	bytes := make([]byte, 16)
@@ -95,6 +105,10 @@ func LoggerMiddleware(logger *slogr.Logger) Middleware {
 		return func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 			// Add logger to context
 			ctx = context.WithValue(ctx, LoggerKey, logger)
+			
+			// Log that we're processing this request (for debugging)
+			logger.Debug(ctx, "LoggerMiddleware: Adding logger to context")
+			
 			return next(ctx, w, r)
 		}
 	}

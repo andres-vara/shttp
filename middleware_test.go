@@ -31,16 +31,16 @@ func errorHandler(errorMsg string) Handler {
 func executeMiddlewareTest(t *testing.T, middleware Middleware, handler Handler, req *http.Request) *httptest.ResponseRecorder {
 	// Create a response recorder
 	w := httptest.NewRecorder()
-	
+
 	// Apply the middleware to the handler
 	wrappedHandler := middleware(handler)
-	
+
 	// Execute the wrapped handler
 	err := wrappedHandler(req.Context(), w, req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-	
+
 	return w
 }
 
@@ -61,7 +61,7 @@ func TestRequestIDMiddleware(t *testing.T) {
 				if requestID == "" {
 					t.Error("RequestIDMiddleware did not set X-Request-ID header")
 				}
-				
+
 				// Check that the request ID is the expected format (hex string)
 				if len(requestID) != 32 { // 16 bytes as hex string is 32 chars
 					t.Errorf("Request ID has unexpected length: got %d, want 32", len(requestID))
@@ -91,15 +91,15 @@ func TestRequestIDMiddleware(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a test request
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
-			
+
 			// Execute the test
 			w := executeMiddlewareTest(t, RequestIDMiddleware(), tt.handler, req)
-			
+
 			// Check the status code
 			if w.Code != tt.wantStatusCode {
 				t.Errorf("Status code = %v, want %v", w.Code, tt.wantStatusCode)
 			}
-			
+
 			// Run the response check
 			tt.checkResponse(t, w)
 		})
@@ -147,15 +147,15 @@ func TestUserContextMiddleware(t *testing.T) {
 			// Create a test request
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
 			tt.setupRequest(req)
-			
+
 			// Execute the test
 			w := executeMiddlewareTest(t, UserContextMiddleware(), tt.handler, req)
-			
+
 			// Check the status code
 			if w.Code != tt.wantStatusCode {
 				t.Errorf("Status code = %v, want %v", w.Code, tt.wantStatusCode)
 			}
-			
+
 			// Check the user ID
 			if w.Body.String() != tt.wantUserID {
 				t.Errorf("User ID = %q, want %q", w.Body.String(), tt.wantUserID)
@@ -195,18 +195,18 @@ func TestLoggerMiddleware(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset the log output
 			logOutput.Reset()
-			
+
 			// Create a test request
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
-			
+
 			// Execute the test
 			w := executeMiddlewareTest(t, LoggerMiddleware(logger), tt.handler, req)
-			
+
 			// Check the status code
 			if w.Code != tt.wantStatusCode {
 				t.Errorf("Status code = %v, want %v", w.Code, tt.wantStatusCode)
 			}
-			
+
 			// Check the log output
 			logStr := logOutput.String()
 			if !strings.Contains(logStr, tt.wantLogContains) {
@@ -280,22 +280,22 @@ func TestLoggingMiddleware(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset the log output
 			logOutput.Reset()
-			
+
 			// Create a test request
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
-			
+
 			// Set up the context
 			ctx := tt.setupContext(req.Context())
 			req = req.WithContext(ctx)
-			
+
 			// Execute the test
 			w := executeMiddlewareTest(t, LoggingMiddleware(logger), tt.handler, req)
-			
+
 			// Check the status code
 			if w.Code != tt.wantStatusCode {
 				t.Errorf("Status code = %v, want %v", w.Code, tt.wantStatusCode)
 			}
-			
+
 			// Check the log output
 			logStr := logOutput.String()
 			for _, wantStr := range tt.wantLogContains {
@@ -303,7 +303,7 @@ func TestLoggingMiddleware(t *testing.T) {
 					t.Errorf("Log output does not contain %q: %q", wantStr, logStr)
 				}
 			}
-			
+
 			// Check that unwanted strings are not in the log
 			if tt.wantLogNotContains != nil {
 				for _, unwantedStr := range tt.wantLogNotContains {
@@ -362,22 +362,22 @@ func TestRecoveryMiddleware(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Reset the log output
 			logOutput.Reset()
-			
+
 			// Create a test request
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
-			
+
 			// Set up the context
 			ctx := tt.setupContext(req.Context())
 			req = req.WithContext(ctx)
-			
+
 			// Execute the test
 			w := executeMiddlewareTest(t, RecoveryMiddleware(logger), tt.handler, req)
-			
+
 			// Check the status code
 			if w.Code != tt.wantStatusCode {
 				t.Errorf("Status code = %v, want %v", w.Code, tt.wantStatusCode)
 			}
-			
+
 			// Check the log output
 			logStr := logOutput.String()
 			for _, wantStr := range tt.wantLogContains {
@@ -454,15 +454,15 @@ func TestCORSMiddleware(t *testing.T) {
 			// Create a test request
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
 			tt.setupRequest(req)
-			
+
 			// Execute the test
 			w := executeMiddlewareTest(t, CORSMiddleware(tt.allowedOrigins), tt.handler, req)
-			
+
 			// Check the status code
 			if w.Code != tt.wantStatusCode {
 				t.Errorf("Status code = %v, want %v", w.Code, tt.wantStatusCode)
 			}
-			
+
 			// Check the headers
 			for k, v := range tt.wantHeaders {
 				if got := w.Header().Get(k); got != v {
@@ -517,10 +517,10 @@ func TestTimeoutMiddleware(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Create a test request
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
-			
+
 			// Execute the test
 			w := executeMiddlewareTest(t, TimeoutMiddleware(tt.timeout), tt.handler, req)
-			
+
 			// Check the status code
 			if tt.wantTimeout {
 				if w.Code != http.StatusInternalServerError {
@@ -564,28 +564,28 @@ func TestResponseWriter(t *testing.T) {
 			// Create a test ResponseWriter
 			w := httptest.NewRecorder()
 			rw := &responseWriter{ResponseWriter: w}
-			
+
 			// Set the status if specified
 			if tt.writeStatus != 0 {
 				rw.WriteHeader(tt.writeStatus)
 			}
-			
+
 			// Write the body
 			rw.Write([]byte(tt.writeBody))
-			
+
 			// Check the status code
 			if rw.status != tt.wantStatusCode {
 				t.Errorf("responseWriter.status = %v, want %v", rw.status, tt.wantStatusCode)
 			}
-			
+
 			if w.Code != tt.wantStatusCode {
 				t.Errorf("ResponseWriter.Code = %v, want %v", w.Code, tt.wantStatusCode)
 			}
-			
+
 			// Check the body
 			if w.Body.String() != tt.writeBody {
 				t.Errorf("ResponseWriter.Body = %q, want %q", w.Body.String(), tt.writeBody)
 			}
 		})
 	}
-} 
+}
