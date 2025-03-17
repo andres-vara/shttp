@@ -1,7 +1,6 @@
 package shttp
 
 import (
-	"context"
 	"net/http"
 )
 
@@ -23,32 +22,20 @@ func NewRouter() *Router {
 
 // ServeHTTP implements the http.Handler interface
 func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	// Find the handler for the request
-	handler, _ := r.mux.Handler(req)
-	if handler == nil {
-		http.NotFound(w, req)
-		return
-	}
+	// In Go 1.22+, the standard mux can handle path parameters
+	// Let the mux handle the request directly to preserve path parameters
+	r.mux.ServeHTTP(w, req)
+}
 
-	// Create a handler function that calls the original handler
-	handlerFunc := func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-		handler.ServeHTTP(w, r)
-		return nil
-	}
-
-	// Apply all middleware
-	// uses function composition to create a processing pipeline for HTTP requests
+// applyMiddleware wraps the given handler with all middleware
+func (r *Router) applyMiddleware(handler Handler) Handler {
+	// Apply all middleware in reverse order
+	// This creates a processing pipeline where the first middleware in the stack is the outermost wrapper
+	result := handler
 	for i := len(r.middleware) - 1; i >= 0; i-- {
-		// each middleware function takes a handler and returns a new handler
-		// the middleware functions are applied in reverse order, so the outermost middleware is applied first
-		handlerFunc = r.middleware[i](handlerFunc)
+		result = r.middleware[i](result)
 	}
-
-	// Execute the handler
-	if err := handlerFunc(req.Context(), w, req); err != nil {
-		// Handle error
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	return result
 }
 
 // GET registers a GET route handler
@@ -58,7 +45,14 @@ func (r *Router) GET(path string, handler Handler) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if err := handler(req.Context(), w, req); err != nil {
+		
+		// Create a context from the request
+		ctx := req.Context()
+		
+		// Apply middleware to the handler
+		handlerWithMiddleware := r.applyMiddleware(handler)
+		
+		if err := handlerWithMiddleware(ctx, w, req); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
@@ -71,7 +65,14 @@ func (r *Router) POST(path string, handler Handler) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if err := handler(req.Context(), w, req); err != nil {
+		
+		// Create a context from the request
+		ctx := req.Context()
+		
+		// Apply middleware to the handler
+		handlerWithMiddleware := r.applyMiddleware(handler)
+		
+		if err := handlerWithMiddleware(ctx, w, req); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
@@ -84,7 +85,14 @@ func (r *Router) PUT(path string, handler Handler) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if err := handler(req.Context(), w, req); err != nil {
+		
+		// Create a context from the request
+		ctx := req.Context()
+		
+		// Apply middleware to the handler
+		handlerWithMiddleware := r.applyMiddleware(handler)
+		
+		if err := handlerWithMiddleware(ctx, w, req); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
@@ -97,7 +105,14 @@ func (r *Router) DELETE(path string, handler Handler) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if err := handler(req.Context(), w, req); err != nil {
+		
+		// Create a context from the request
+		ctx := req.Context()
+		
+		// Apply middleware to the handler
+		handlerWithMiddleware := r.applyMiddleware(handler)
+		
+		if err := handlerWithMiddleware(ctx, w, req); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
@@ -110,7 +125,14 @@ func (r *Router) PATCH(path string, handler Handler) {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		if err := handler(req.Context(), w, req); err != nil {
+		
+		// Create a context from the request
+		ctx := req.Context()
+		
+		// Apply middleware to the handler
+		handlerWithMiddleware := r.applyMiddleware(handler)
+		
+		if err := handlerWithMiddleware(ctx, w, req); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	})
