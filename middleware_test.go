@@ -3,6 +3,7 @@ package shttp
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -28,7 +29,7 @@ func errorHandler(errorMsg string) Handler {
 }
 
 // Helper function to execute a middleware test
-func executeMiddlewareTest(t *testing.T, middleware Middleware, handler Handler, req *http.Request) *httptest.ResponseRecorder {
+func executeMiddlewareTest(_ *testing.T, middleware Middleware, handler Handler, req *http.Request) *httptest.ResponseRecorder {
 	// Create a response recorder
 	w := httptest.NewRecorder()
 
@@ -167,7 +168,11 @@ func TestUserContextMiddleware(t *testing.T) {
 func TestLoggerMiddleware(t *testing.T) {
 	// Create a logger that writes to a string builder
 	var logOutput strings.Builder
-	logger := slogr.New(&logOutput, slogr.DefaultOptions())
+
+	logger := slogr.New(&logOutput, &slogr.Options{
+		Level: slog.LevelDebug,
+		HandlerType: slogr.HandlerTypeJSON,
+	})
 
 	tests := []struct {
 		name           string
