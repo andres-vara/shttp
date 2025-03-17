@@ -152,7 +152,8 @@ func LoggingMiddleware(logger *slogr.Logger) Middleware {
 				r.Method, r.URL.Path, requestID, userID, clientIP)
 
 			// Create a response writer that captures the status code
-			wrapped := &responseWriter{ResponseWriter: w}
+			// Initialize with http.StatusOK as default status
+			wrapped := &responseWriter{ResponseWriter: w, status: http.StatusOK}
 
 			// Call the next handler
 			err := next(ctx, wrapped, r)
@@ -164,7 +165,7 @@ func LoggingMiddleware(logger *slogr.Logger) Middleware {
 				logger.Errorf(ctx, "[http.response] Request failed method=%s path=%s request_id=%s user_id=%s status=%d duration_ms=%d error=%s",
 					r.Method, r.URL.Path, requestID, userID, wrapped.status, duration.Milliseconds(), err.Error())
 			} else {
-				logger.Infof(ctx, "[http.response Request completed method=%s path=%s request_id=%s user_id=%s status=%d duration_ms=%d",
+				logger.Infof(ctx, "[http.response] Request completed method=%s path=%s request_id=%s user_id=%s status=%d duration_ms=%d",
 					r.Method, r.URL.Path, requestID, userID, wrapped.status, duration.Milliseconds())
 			}
 
