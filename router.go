@@ -38,104 +38,49 @@ func (r *Router) applyMiddleware(handler Handler) Handler {
 	return result
 }
 
+func (r *Router) handleMethod(method, path string, handler Handler) {
+    r.mux.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
+        if req.Method != method {
+            http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+            return
+        }
+        
+        ctx := req.Context()
+        handlerWithMiddleware := r.applyMiddleware(handler)
+        
+        if err := handlerWithMiddleware(ctx, w, req); err != nil {
+            if httpErr, ok := err.(HTTPError); ok {
+                http.Error(w, httpErr.Message, httpErr.StatusCode)
+            } else {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+            }
+        }
+    })
+}
+
 // GET registers a GET route handler
 func (r *Router) GET(path string, handler Handler) {
-	r.mux.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodGet {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		
-		// Create a context from the request
-		ctx := req.Context()
-		
-		// Apply middleware to the handler
-		handlerWithMiddleware := r.applyMiddleware(handler)
-		
-		if err := handlerWithMiddleware(ctx, w, req); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
+	r.handleMethod(http.MethodGet, path, handler)
 }
 
 // POST registers a POST route handler
 func (r *Router) POST(path string, handler Handler) {
-	r.mux.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodPost {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		
-		// Create a context from the request
-		ctx := req.Context()
-		
-		// Apply middleware to the handler
-		handlerWithMiddleware := r.applyMiddleware(handler)
-		
-		if err := handlerWithMiddleware(ctx, w, req); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
+	r.handleMethod(http.MethodPost, path, handler)
 }
 
 // PUT registers a PUT route handler
 func (r *Router) PUT(path string, handler Handler) {
-	r.mux.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodPut {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		
-		// Create a context from the request
-		ctx := req.Context()
-		
-		// Apply middleware to the handler
-		handlerWithMiddleware := r.applyMiddleware(handler)
-		
-		if err := handlerWithMiddleware(ctx, w, req); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
+	r.handleMethod(http.MethodPut, path, handler)
 }
 
 // DELETE registers a DELETE route handler
 func (r *Router) DELETE(path string, handler Handler) {
-	r.mux.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodDelete {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		
-		// Create a context from the request
-		ctx := req.Context()
-		
-		// Apply middleware to the handler
-		handlerWithMiddleware := r.applyMiddleware(handler)
-		
-		if err := handlerWithMiddleware(ctx, w, req); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
+	r.handleMethod(http.MethodDelete, path, handler)
 }
 
 // PATCH registers a PATCH route handler
 func (r *Router) PATCH(path string, handler Handler) {
-	r.mux.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodPatch {
-			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		
-		// Create a context from the request
-		ctx := req.Context()
-		
-		// Apply middleware to the handler
-		handlerWithMiddleware := r.applyMiddleware(handler)
-		
-		if err := handlerWithMiddleware(ctx, w, req); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
+	r.handleMethod(http.MethodPatch, path, handler)
 }
 
 // Use adds middleware to the router
