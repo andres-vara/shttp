@@ -76,7 +76,6 @@ func New(ctx context.Context, config *Config) *Server {
 		WriteTimeout:   config.WriteTimeout,
 		IdleTimeout:    config.IdleTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
-
 	}
 
 	return &Server{
@@ -84,7 +83,7 @@ func New(ctx context.Context, config *Config) *Server {
 		config: config,
 		router: router,
 		logger: config.Logger,
-		ctx: ctx,
+		ctx:    ctx,
 	}
 }
 
@@ -142,4 +141,3 @@ func (s *Server) Use(middleware ...Middleware) {
 		s.router.Use(m)
 	}
 }
-
