@@ -239,20 +239,25 @@ func TimeoutMiddleware(timeout time.Duration) Middleware {
 	}
 }
 
-// responseWriter wraps http.ResponseWriter to capture the status code
+// responseWriter wraps http.ResponseWriter to capture status and prevent multiple header writes.
 type responseWriter struct {
 	http.ResponseWriter
-	status int
+	status      int
+	wroteHeader bool
 }
 
 func (w *responseWriter) WriteHeader(status int) {
+	if w.wroteHeader {
+		return
+	}
 	w.status = status
 	w.ResponseWriter.WriteHeader(status)
+	w.wroteHeader = true
 }
 
 func (w *responseWriter) Write(b []byte) (int, error) {
-	if w.status == 0 {
-		w.status = http.StatusOK
+	if !w.wroteHeader {
+		w.WriteHeader(http.StatusOK)
 	}
 	return w.ResponseWriter.Write(b)
 }

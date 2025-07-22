@@ -39,23 +39,30 @@ func (r *Router) applyMiddleware(handler Handler) Handler {
 }
 
 func (r *Router) handleMethod(method, path string, handler Handler) {
-    r.mux.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
-        if req.Method != method {
-            http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-            return
-        }
-        
-        ctx := req.Context()
-        handlerWithMiddleware := r.applyMiddleware(handler)
-        
-        if err := handlerWithMiddleware(ctx, w, req); err != nil {
-            if httpErr, ok := err.(HTTPError); ok {
-                http.Error(w, httpErr.Message, httpErr.StatusCode)
-            } else {
-                http.Error(w, err.Error(), http.StatusInternalServerError)
-            }
-        }
-    })
+	r.mux.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != method {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		ctx := req.Context()
+		handlerWithMiddleware := r.applyMiddleware(handler)
+
+		// Create a new response writer to track whether the header has been written.
+		rw := &responseWriter{ResponseWriter: w}
+
+		// Call the handler with the wrapped response writer.
+		if err := handlerWithMiddleware(ctx, rw, req); err != nil {
+			// If the header has not been written, write the error to the response.
+			if !rw.wroteHeader {
+				if httpErr, ok := err.(HTTPError); ok {
+					http.Error(w, httpErr.Message, httpErr.StatusCode)
+				} else {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+			}
+		}
+	})
 }
 
 // GET registers a GET route handler
