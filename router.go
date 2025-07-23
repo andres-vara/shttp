@@ -38,7 +38,8 @@ func (r *Router) applyMiddleware(handler Handler) Handler {
 	return result
 }
 
-func (r *Router) handleMethod(method, path string, handler Handler) {
+// Handle registers a handler for the given method and path.
+func (r *Router) Handle(method, path string, handler Handler) {
 	r.mux.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != method {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -67,30 +68,30 @@ func (r *Router) handleMethod(method, path string, handler Handler) {
 
 // GET registers a GET route handler
 func (r *Router) GET(path string, handler Handler) {
-	r.handleMethod(http.MethodGet, path, handler)
+	r.Handle(http.MethodGet, path, handler)
 }
 
 // POST registers a POST route handler
 func (r *Router) POST(path string, handler Handler) {
-	r.handleMethod(http.MethodPost, path, handler)
+	r.Handle(http.MethodPost, path, handler)
 }
 
 // PUT registers a PUT route handler
 func (r *Router) PUT(path string, handler Handler) {
-	r.handleMethod(http.MethodPut, path, handler)
+	r.Handle(http.MethodPut, path, handler)
 }
 
 // DELETE registers a DELETE route handler
 func (r *Router) DELETE(path string, handler Handler) {
-	r.handleMethod(http.MethodDelete, path, handler)
+	r.Handle(http.MethodDelete, path, handler)
 }
 
 // PATCH registers a PATCH route handler
 func (r *Router) PATCH(path string, handler Handler) {
-	r.handleMethod(http.MethodPatch, path, handler)
+	r.Handle(http.MethodPatch, path, handler)
 }
 
 // Use adds middleware to the router
-func (r *Router) Use(middleware Middleware) {
-	r.middleware = append(r.middleware, middleware)
+func (r *Router) Use(middleware ...Middleware) {
+	r.middleware = append(r.middleware, middleware...)
 } 

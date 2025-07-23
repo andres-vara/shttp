@@ -135,9 +135,12 @@ func (s *Server) PATCH(path string, handler Handler) {
 	s.router.PATCH(path, handler)
 }
 
+// Handle registers a handler for the given method and path
+func (s *Server) Handle(method, path string, handler Handler) {
+	s.router.Handle(method, path, handler)
+}
+
 // Use adds one or more middleware to the server (variadic approach)
 func (s *Server) Use(middleware ...Middleware) {
-	for _, m := range middleware {
-		s.router.Use(m)
-	}
+	s.router.Use(middleware...)
 }

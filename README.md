@@ -122,3 +122,14 @@ func TestMatchRoute(t *testing.T) {
 		t.Errorf("expected param 'id' = '456', got '%s'", params["id"])
 	}
 }
+
+
+# improvement recomendations
+
+
+   1. API Consistency: Make Router.Use variadic like Server.Use.
+   2. Code Consolidation: Consider a single Handle method in the router.
+   3. Logging: Make the context-aware logging more explicit.
+   4. Configuration: Explore the functional options pattern for server configuration.
+   5. Documentation: Add more examples and package-level comments.
+
