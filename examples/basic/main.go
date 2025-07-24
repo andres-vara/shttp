@@ -25,6 +25,9 @@ func main() {
 	// Create a new server with default configuration
 	server := shttp.New(ctx, nil)
 
+	server.Use(shttp.LoggerMiddleware(logger))
+	server.Use(shttp.LoggingMiddleware(logger))
+
 	// Register routes
 	server.GET("/", helloWorldHandler)
 	server.GET("/health", healthCheckHandler)
@@ -34,8 +37,6 @@ func main() {
 	// Set up a channel to handle shutdown signals
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
-	server.Use(shttp.LoggingMiddleware(logger))
 
 	// Start the server in a goroutine
 	go func() {
@@ -63,6 +64,9 @@ func main() {
 
 // helloWorldHandler returns a simple hello world message
 func helloWorldHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+	logger := shttp.GetLogger(ctx)
+	logger.Infof(ctx, "Handling hello world request path: %v", r.URL.Path)
+
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, "Hello, World!")
@@ -80,13 +84,13 @@ func healthCheckHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 // userHandler demonstrates accessing path parameters from the URL
 func userHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	userID := r.PathValue("id")
-	
+
 	// Debug information
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Path: %s\n", r.URL.Path)
 	fmt.Fprintf(w, "UserID from PathValue: %s\n", userID)
-	
+
 	// Manual path extraction as fallback
 	parts := strings.Split(r.URL.Path, "/")
 	manualID := ""
@@ -94,7 +98,7 @@ func userHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) er
 		manualID = parts[len(parts)-1]
 	}
 	fmt.Fprintf(w, "Manually extracted ID: %s\n", manualID)
-	
+
 	return nil
 }
 
@@ -104,12 +108,12 @@ func testHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) er
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
-	
+
 	// param2 := r.PathValue("param2")
-	
+
 	fmt.Fprintf(w, "Path: %s\n", r.URL.Path)
 	fmt.Fprintf(w, "param1: %s\n", param1)
 	// fmt.Fprintf(w, "param2: %s\n", param2)
-	
+
 	return nil
-} 
+}

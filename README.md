@@ -1,160 +1,135 @@
-# shttp
-
-A structured HTTP server wrapper for Go that simplifies HTTP server creation with built-in middleware support, structured routing, and improved error handling.
-
-## Features
-
-- **Simple API**: Clean and intuitive API for creating HTTP servers
-- **Middleware Support**: Built-in and custom middleware support
-- **Error Handling**: Improved error handling with error returns instead of panics
-- **Context-Aware**: First-class context support for better request lifecycle management
-- **Graceful Shutdown**: Built-in support for graceful server shutdown
-- **TLS Support**: Easy HTTPS server configuration
-- **Structured Logging**: Integration with structured logging via slogr
-- **Type Safety**: Type-safe handlers and middleware
-
-## Installation
-
-```bash
-go get github.com/andres-vara/shttp
-```
-
-## Quick Start
-
-```go
-package main
+// pathparams.go
+package shttp
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"net/http"
-
-	"github.com/andres-vara/shttp"
 )
 
-func main() {
-	// Create a context
-	ctx := context.Background()
+type pathParamsKey struct{}
 
-	// Create a new server with default configuration
-	server := shttp.New(ctx, nil)
+func setPathParams(r *http.Request, params map[string]string) *http.Request {
+	ctx := context.WithValue(r.Context(), pathParamsKey{}, params)
+	return r.WithContext(ctx)
+}
 
-	// Add a simple route
-	server.GET("/hello", func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-		fmt.Fprintln(w, "Hello, World!")
-		return nil
-	})
+func GetPathParam(r *http.Request, key string) string {
+	if params, ok := r.Context().Value(pathParamsKey{}).(map[string]string); ok {
+		return params[key]
+	}
+	return ""
+}
 
-	// Start the server
-	log.Println("Starting server at http://localhost:8080")
-	if err := server.Start(); err != nil {
-		log.Fatalf("Server error: %v", err)
+
+// server.go (or the file where the router is implemented)
+package shttp
+
+import (
+	"strings"
+)
+
+type route struct {
+	method   string
+	pattern  string
+	segments []segment
+	handler  Handler
+}
+
+type segment struct {
+	isParam bool
+	value   string
+}
+
+func parsePattern(pattern string) []segment {
+	parts := strings.Split(strings.Trim(pattern, "/"), "/")
+	segments := make([]segment, len(parts))
+	for i, part := range parts {
+		if strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}") {
+			segments[i] = segment{isParam: true, value: part[1 : len(part)-1]}
+		} else {
+			segments[i] = segment{isParam: false, value: part}
+		}
+	}
+	return segments
+}
+
+func matchRoute(path string, segments []segment) (bool, map[string]string) {
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(parts) != len(segments) {
+		return false, nil
+	}
+	params := make(map[string]string)
+	for i, part := range parts {
+		seg := segments[i]
+		if seg.isParam {
+			params[seg.value] = part
+		} else if seg.value != part {
+			return false, nil
+		}
+	}
+	return true, params
+}
+
+// In your server's main request handler loop (e.g. ServeHTTP), example usage:
+//
+// func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+//     for _, route := range s.routes {
+//         if route.method != r.Method {
+//             continue
+//         }
+//         matched, params := matchRoute(r.URL.Path, route.segments)
+//         if matched {
+//             r = setPathParams(r, params)
+//             err := route.handler(r.Context(), w, r)
+//             if err != nil {
+//                 // handle error
+//             }
+//             return
+//         }
+//     }
+//     http.NotFound(w, r)
+// }
+
+
+// pathparams_test.go
+package shttp
+
+import (
+	"net/http/httptest"
+	"testing"
+)
+
+func TestGetPathParam(t *testing.T) {
+	r := httptest.NewRequest("GET", "/api/123", nil)
+	r = setPathParams(r, map[string]string{"id": "123"})
+
+	id := GetPathParam(r, "id")
+	if id != "123" {
+		t.Errorf("expected id to be '123', got '%s'", id)
 	}
 }
-```
 
-## Handler Signature
+func TestMatchRoute(t *testing.T) {
+	pattern := "/api/{id}"
+	segments := parsePattern(pattern)
 
-The `shttp` package uses a custom handler signature that differs from the standard library:
+	matched, params := matchRoute("/api/456", segments)
+	if !matched {
+		t.Fatalf("route should have matched")
+	}
 
-```go
-type Handler func(ctx context.Context, w http.ResponseWriter, r *http.Request) error
-```
-
-This signature offers several advantages:
-1. **Explicit context**: The context is a first-class parameter, not hidden inside the request
-2. **Error returns**: Handlers return errors instead of writing them directly to the response
-3. **Middleware friendly**: Makes it easier to implement middleware that can handle errors
-
-## Middleware
-
-Middleware is implemented as functions that wrap handlers:
-
-```go
-type Middleware func(Handler) Handler
-```
-
-Adding middleware to a server:
-
-```go
-// Add built-in middleware
-server.Use(shttp.RequestIDMiddleware())
-server.Use(shttp.LoggingMiddleware(logger))
-server.Use(shttp.RecoveryMiddleware(logger))
-
-// Add custom middleware
-server.Use(func(next shttp.Handler) shttp.Handler {
-    return func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-        w.Header().Set("X-Custom-Header", "value")
-        return next(ctx, w, r)
-    }
-})
-```
-
-## Built-in Middleware
-
-The `shttp` package includes several built-in middleware:
-
-- **RequestIDMiddleware**: Adds a unique request ID to each request
-- **LoggerMiddleware**: Adds a logger to the request context
-- **LoggingMiddleware**: Logs request and response details
-- **RecoveryMiddleware**: Recovers from panics in handlers
-- **CORSMiddleware**: Handles CORS for cross-origin requests
-- **TimeoutMiddleware**: Sets a timeout for request processing
-- **UserContextMiddleware**: Extracts user information from the request
-
-## Error Handling
-
-The error return value of handlers allows for centralized error handling:
-
-```go
-// Global error handling middleware
-func errorHandlingMiddleware(next shttp.Handler) shttp.Handler {
-    return func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-        err := next(ctx, w, r)
-        if err == nil {
-            return nil
-        }
-
-        // Handle error based on type
-        switch e := err.(type) {
-        case *NotFoundError:
-            w.WriteHeader(http.StatusNotFound)
-            fmt.Fprintf(w, "Not found: %v", e)
-        case *ValidationError:
-            w.WriteHeader(http.StatusBadRequest)
-            fmt.Fprintf(w, "Invalid input: %v", e)
-        default:
-            w.WriteHeader(http.StatusInternalServerError)
-            fmt.Fprintf(w, "Server error: %v", err)
-        }
-
-        return nil
-    }
+	if params["id"] != "456" {
+		t.Errorf("expected param 'id' = '456', got '%s'", params["id"])
+	}
 }
-```
 
-## Context Values
 
-The package provides helpers for accessing common context values:
+# improvement recomendations
 
-```go
-// In middleware or handlers
-requestID := shttp.GetRequestID(ctx)
-userID := shttp.GetUserID(ctx)
-clientIP := shttp.GetClientIP(ctx)
-```
 
-## Examples
+   1. API Consistency: Make Router.Use variadic like Server.Use.
+   2. Code Consolidation: Consider a single Handle method in the router.
+   3. Logging: Make the context-aware logging more explicit.
+   4. Configuration: Explore the functional options pattern for server configuration.
+   5. Documentation: Add more examples and package-level comments.
 
-See the [examples](./examples) directory for more complete examples:
-
-- [Basic server](./examples/basic/main.go): Simple HTTP server setup
-- [Middleware](./examples/middleware/main.go): Using built-in and custom middleware
-- [Error handling](./examples/error-handling/main.go): Centralized error handling
-- [TLS](./examples/tls/main.go): Setting up a TLS server
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 

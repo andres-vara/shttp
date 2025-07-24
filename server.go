@@ -76,7 +76,6 @@ func New(ctx context.Context, config *Config) *Server {
 		WriteTimeout:   config.WriteTimeout,
 		IdleTimeout:    config.IdleTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
-
 	}
 
 	return &Server{
@@ -84,7 +83,7 @@ func New(ctx context.Context, config *Config) *Server {
 		config: config,
 		router: router,
 		logger: config.Logger,
-		ctx: ctx,
+		ctx:    ctx,
 	}
 }
 
@@ -136,10 +135,12 @@ func (s *Server) PATCH(path string, handler Handler) {
 	s.router.PATCH(path, handler)
 }
 
-// Use adds one or more middleware to the server (variadic approach)
-func (s *Server) Use(middleware ...Middleware) {
-	for _, m := range middleware {
-		s.router.Use(m)
-	}
+// Handle registers a handler for the given method and path
+func (s *Server) Handle(method, path string, handler Handler) {
+	s.router.Handle(method, path, handler)
 }
 
+// Use adds one or more middleware to the server (variadic approach)
+func (s *Server) Use(middleware ...Middleware) {
+	s.router.Use(middleware...)
+}
