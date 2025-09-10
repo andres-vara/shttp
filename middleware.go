@@ -103,28 +103,14 @@ func RequestIDMiddleware() Middleware {
 // like request ID, user ID, and client IP, and adds it to the context.
 // It assumes that middleware like RequestIDMiddleware and UserContextMiddleware have already been run.
 func ContextualLogger(baseLogger *slogr.Logger) Middleware {
-	return func(next Handler) Handler {
-		return func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-			// Get context values that should have been set by other middleware
-			requestID := GetRequestID(ctx)
-			userID := GetUserID(ctx)
-			clientIP := GetClientIP(ctx)
-
-			// Create a request-scoped logger with the extracted context.
-			// NOTE: This assumes the slogr.Logger has a `Logger` field which is a *slog.Logger.
-			reqLogger := baseLogger.Logger.With(
-				"request_id", requestID,
-				"user_id", userID,
-				"client_ip", clientIP,
-			)
-
-			// Add the new request-scoped logger to the context.
-			ctx = context.WithValue(ctx, LoggerKey, &slogr.Logger{Logger: reqLogger})
-
-			// Continue to the next handler in the chain.
-			return next(ctx, w, r)
-		}
-	}
+    return func(next Handler) Handler {
+        return func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+            // For compatibility with current slogr, attach the provided logger as-is.
+            // Context values (requestID, userID, clientIP) can be retrieved inside handlers if needed.
+            ctx = context.WithValue(ctx, LoggerKey, baseLogger)
+            return next(ctx, w, r)
+        }
+    }
 }
 
 // UserContextMiddleware extracts user info from the request (e.g., from JWT)
@@ -153,36 +139,24 @@ func UserContextMiddleware() Middleware {
 // It relies on a logger being present in the context, which is expected to be
 // set by the ContextualLogger middleware.
 func LoggingMiddleware() Middleware {
-	return func(next Handler) Handler {
-		return func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-			start := time.Now()
-
-			// Get the logger from the context. If it's not there, we can't log.
-			logger := GetLogger(ctx)
-			if logger == nil {
-				return next(ctx, w, r) // Proceed without logging
-			}
-
-			// NOTE: This assumes the logger from context supports structured logging
-			// via methods like Info, Error, and With.
-			logger.Logger.InfoContext(ctx, "Incoming request", "method", r.Method, "path", r.URL.Path)
-
-			wrapped := &responseWriter{ResponseWriter: w, status: http.StatusOK}
-			err := next(ctx, w, r)
-			duration := time.Since(start)
-
-			// Add response-specific fields to the logger
-			resLogger := logger.Logger.With("status", wrapped.status, "duration_ms", duration.Milliseconds())
-
-			if err != nil {
-				resLogger.ErrorContext(ctx, "Request failed", "error", err.Error())
-			} else {
-				resLogger.InfoContext(ctx, "Request completed")
-			}
-
-			return err
-		}
-	}
+    return func(next Handler) Handler {
+        return func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+            start := time.Now()
+            logger := GetLogger(ctx)
+            if logger == nil {
+                return next(ctx, w, r)
+            }
+            logger.Infof(ctx, "Incoming request method=%s path=%s", r.Method, r.URL.Path)
+            err := next(ctx, w, r)
+            duration := time.Since(start)
+            if err != nil {
+                logger.Errorf(ctx, "Request failed path=%s err=%v duration_ms=%d", r.URL.Path, err, duration.Milliseconds())
+            } else {
+                logger.Infof(ctx, "Request completed path=%s duration_ms=%d", r.URL.Path, duration.Milliseconds())
+            }
+            return err
+        }
+    }
 }
 
 // RecoveryMiddleware creates a middleware that recovers from panics

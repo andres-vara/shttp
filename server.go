@@ -135,6 +135,11 @@ func (s *Server) PATCH(path string, handler Handler) {
 	s.router.PATCH(path, handler)
 }
 
+// ANY registers a method-agnostic route
+func (s *Server) ANY(path string, handler Handler) {
+	s.router.ANY(path, handler)
+}
+
 // Handle registers a handler for the given method and path
 func (s *Server) Handle(method, path string, handler Handler) {
 	s.router.Handle(method, path, handler)

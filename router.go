@@ -91,6 +91,27 @@ func (r *Router) PATCH(path string, handler Handler) {
 	r.Handle(http.MethodPatch, path, handler)
 }
 
+// ANY registers a handler for all HTTP methods on a path.
+// Internally it registers a single handler without method filtering.
+func (r *Router) ANY(path string, handler Handler) {
+	r.mux.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
+		handlerWithMiddleware := r.applyMiddleware(handler)
+
+		// Wrap the response writer to track header writes.
+		rw := &responseWriter{ResponseWriter: w}
+		if err := handlerWithMiddleware(ctx, rw, req); err != nil {
+			if !rw.wroteHeader {
+				if httpErr, ok := err.(HTTPError); ok {
+					http.Error(w, httpErr.Message, httpErr.StatusCode)
+				} else {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+			}
+		}
+	})
+}
+
 // Use adds middleware to the router
 func (r *Router) Use(middleware ...Middleware) {
 	r.middleware = append(r.middleware, middleware...)
