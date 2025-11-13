@@ -36,4 +36,13 @@ jobs:
       - name: Run shttp tests
         working-directory: ./shttp
         run: |
+          # If shttp/go.mod uses a local replace to ../slogr during development,
+          # clone the slogr repository into the parent directory so the replace
+          # path resolves on the runner.
+          if [ -f go.mod ]; then
+            # attempt to detect a replace to ../slogr and clone if present
+            if grep -q "replace .*=> ../slogr" go.mod 2>/dev/null; then
+              git clone https://github.com/andres-vara/slogr ../slogr || true
+            fi
+          fi
           go test ./... -v
