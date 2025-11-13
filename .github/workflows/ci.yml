@@ -40,7 +40,6 @@ jobs:
           go test ./... -v
 
       - name: Run shttp tests
-        working-directory: ./shttp
         run: |
           # If shttp/go.mod uses a local replace to ../slogr during development,
           # ensure the slogr repo is present in the parent directory.
