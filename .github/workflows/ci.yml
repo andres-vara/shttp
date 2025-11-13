@@ -29,20 +29,26 @@ jobs:
             ${{ runner.os }}-go-
 
       - name: Run slogr tests
-        working-directory: ./slogr
+        # Ensure slogr is available in the runner workspace. Clone into the
+        # parent directory (../slogr) so shttp's local replace (../slogr) will
+        # resolve, and run the slogr test suite from there.
         run: |
+          if [ ! -d ../slogr ]; then
+            git clone https://github.com/andres-vara/slogr ../slogr
+          fi
+          cd ../slogr
           go test ./... -v
 
       - name: Run shttp tests
         working-directory: ./shttp
         run: |
           # If shttp/go.mod uses a local replace to ../slogr during development,
-          # clone the slogr repository into the parent directory so the replace
-          # path resolves on the runner.
+          # ensure the slogr repo is present in the parent directory.
           if [ -f go.mod ]; then
-            # attempt to detect a replace to ../slogr and clone if present
             if grep -q "replace .*=> ../slogr" go.mod 2>/dev/null; then
-              git clone https://github.com/andres-vara/slogr ../slogr || true
+              if [ ! -d ../slogr ]; then
+                git clone https://github.com/andres-vara/slogr ../slogr || true
+              fi
             fi
           fi
           go test ./... -v
