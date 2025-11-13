@@ -18,7 +18,7 @@ func GetPathParam(r *http.Request, key string) string {
 		return params[key]
 	# shttp
 
-	[![CI Status](https://github.com/andres-vara/shttp/actions/workflows/ci.yml/badge.svg)](https://github.com/andres-vara/shttp/actions/workflows/ci.yml)
+	[![CI Status](https://github.com/andres-vara/shttp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/andres-vara/shttp/actions/workflows/ci.yml?branch=main)
 	[![Go Report Card](https://goreportcard.com/badge/github.com/andres-vara/shttp)](https://goreportcard.com/report/github.com/andres-vara/shttp)
 	[![PkgGoDev](https://pkg.go.dev/badge/github.com/andres-vara/shttp)](https://pkg.go.dev/github.com/andres-vara/shttp)
 	[![License](https://img.shields.io/github/license/andres-vara/shttp.svg)](LICENSE)
