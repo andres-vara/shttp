@@ -99,7 +99,7 @@ func homeHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) er
 	// Write response
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	
+
 	html := `
 	<html>
 	<head><title>Logger Example</title></head>
@@ -118,7 +118,7 @@ func homeHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) er
 	</body>
 	</html>
 	`
-	
+
 	fmt.Fprintf(w, html, requestID, userID, clientIP)
 	return nil
 }
@@ -131,7 +131,7 @@ func debugLogHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 	}
 
 	logger.Debug(ctx, "This is a debug message - useful for detailed troubleshooting")
-	
+
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, "Debug log entry created - check server logs")
@@ -146,7 +146,7 @@ func infoLogHandler(ctx context.Context, w http.ResponseWriter, r *http.Request)
 	}
 
 	logger.Info(ctx, "This is an info message - for normal operational information")
-	
+
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, "Info log entry created - check server logs")
@@ -161,9 +161,9 @@ func errorLogHandler(ctx context.Context, w http.ResponseWriter, r *http.Request
 	}
 
 	logger.Error(ctx, "This is an error message - something went wrong")
-	
+
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, "Error log entry created - check server logs")
 	return nil
-} 
+}

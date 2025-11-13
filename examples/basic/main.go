@@ -83,7 +83,7 @@ func healthCheckHandler(ctx context.Context, w http.ResponseWriter, r *http.Requ
 
 // userHandler demonstrates accessing path parameters from the URL
 func userHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	userID := r.PathValue("id")
+	userID := shttp.PathValue(r, "id")
 
 	// Debug information
 	w.Header().Set("Content-Type", "text/plain")
@@ -104,7 +104,7 @@ func userHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) er
 
 // testHandler is a test route for debugging path parameters
 func testHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-	param1 := r.PathValue("param1")
+	param1 := shttp.PathValue(r, "param1")
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)

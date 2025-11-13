@@ -64,7 +64,6 @@ func GetLogger(ctx context.Context) *slogr.Logger {
 	return nil
 }
 
-
 // generates a random request ID
 func generateRequestID() string {
 	bytes := make([]byte, 16)
@@ -81,18 +80,18 @@ func RequestIDMiddleware() Middleware {
 		return func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 			// Generate a unique request ID
 			requestID := generateRequestID()
-			
+
 			// Add to both context and response headers
 			ctx = context.WithValue(ctx, RequestIDKey, requestID)
 			w.Header().Set("X-Request-ID", requestID)
-			
+
 			// Extract client IP (simplified)
 			clientIP := r.RemoteAddr
 			if forwardedFor := r.Header.Get("X-Forwarded-For"); forwardedFor != "" {
 				clientIP = forwardedFor
 			}
 			ctx = context.WithValue(ctx, ClientIPKey, clientIP)
-			
+
 			// Continue with request handling
 			return next(ctx, w, r)
 		}
@@ -103,14 +102,14 @@ func RequestIDMiddleware() Middleware {
 // like request ID, user ID, and client IP, and adds it to the context.
 // It assumes that middleware like RequestIDMiddleware and UserContextMiddleware have already been run.
 func ContextualLogger(baseLogger *slogr.Logger) Middleware {
-    return func(next Handler) Handler {
-        return func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-            // For compatibility with current slogr, attach the provided logger as-is.
-            // Context values (requestID, userID, clientIP) can be retrieved inside handlers if needed.
-            ctx = context.WithValue(ctx, LoggerKey, baseLogger)
-            return next(ctx, w, r)
-        }
-    }
+	return func(next Handler) Handler {
+		return func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+			// For compatibility with current slogr, attach the provided logger as-is.
+			// Context values (requestID, userID, clientIP) can be retrieved inside handlers if needed.
+			ctx = context.WithValue(ctx, LoggerKey, baseLogger)
+			return next(ctx, w, r)
+		}
+	}
 }
 
 // UserContextMiddleware extracts user info from the request (e.g., from JWT)
@@ -120,43 +119,65 @@ func UserContextMiddleware() Middleware {
 		return func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 			// This is a simplified example - in a real app, you'd extract the user ID
 			// from JWT or session
-			
+
 			// For example, perhaps from Authorization header
 			userID := "anonymous"
 			if authHeader := r.Header.Get("Authorization"); authHeader != "" {
 				// In reality, you'd validate and extract user ID from the token
 				userID = "authenticated-user"
 			}
-			
+
 			ctx = context.WithValue(ctx, UserIDKey, userID)
-			
+
 			return next(ctx, w, r)
 		}
 	}
 }
 
+// LoggerMiddleware attaches the provided logger into the request context.
+// This is a convenience wrapper around ContextualLogger to match historical
+// usage where callers pass the logger explicitly.
+func LoggerMiddleware(logger *slogr.Logger) Middleware {
+	return ContextualLogger(logger)
+}
+
 // LoggingMiddleware creates a middleware that logs request and response details.
-// It relies on a logger being present in the context, which is expected to be
-// set by the ContextualLogger middleware.
-func LoggingMiddleware() Middleware {
-    return func(next Handler) Handler {
-        return func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-            start := time.Now()
-            logger := GetLogger(ctx)
-            if logger == nil {
-                return next(ctx, w, r)
-            }
-            logger.Infof(ctx, "Incoming request method=%s path=%s", r.Method, r.URL.Path)
-            err := next(ctx, w, r)
-            duration := time.Since(start)
-            if err != nil {
-                logger.Errorf(ctx, "Request failed path=%s err=%v duration_ms=%d", r.URL.Path, err, duration.Milliseconds())
-            } else {
-                logger.Infof(ctx, "Request completed path=%s duration_ms=%d", r.URL.Path, duration.Milliseconds())
-            }
-            return err
-        }
-    }
+// If a non-nil logger is provided it will be used directly; otherwise the
+// middleware will try to obtain a logger from the request context.
+func LoggingMiddleware(logger *slogr.Logger) Middleware {
+	return func(next Handler) Handler {
+		return func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+			start := time.Now()
+			var l *slogr.Logger
+			if logger != nil {
+				l = logger
+			} else {
+				l = GetLogger(ctx)
+			}
+			if l == nil {
+				// No logger available, proceed without logging
+				return next(ctx, w, r)
+			}
+			// Log a request entry with contextual fields
+			l.Infof(ctx, "[http.request] method=%s path=%s request_id=%s user_id=%s client_ip=%s", r.Method, r.URL.Path, GetRequestID(ctx), GetUserID(ctx), GetClientIP(ctx))
+
+			err := next(ctx, w, r)
+			duration := time.Since(start)
+
+			// Log a response entry with status/duration and optional error
+			if err != nil {
+				l.Errorf(ctx, "[http.response] method=%s path=%s request_id=%s user_id=%s client_ip=%s error=%v duration_ms=%d", r.Method, r.URL.Path, GetRequestID(ctx), GetUserID(ctx), GetClientIP(ctx), err, duration.Milliseconds())
+			} else {
+				// try to obtain status code if responseWriter wrapped this (best-effort)
+				status := http.StatusOK
+				if rw, ok := w.(*responseWriter); ok && rw.status != 0 {
+					status = rw.status
+				}
+				l.Infof(ctx, "[http.response] method=%s path=%s request_id=%s user_id=%s client_ip=%s status=%d duration_ms=%d", r.Method, r.URL.Path, GetRequestID(ctx), GetUserID(ctx), GetClientIP(ctx), status, duration.Milliseconds())
+			}
+			return err
+		}
+	}
 }
 
 // RecoveryMiddleware creates a middleware that recovers from panics
@@ -168,14 +189,14 @@ func RecoveryMiddleware(logger *slogr.Logger) Middleware {
 					// Log the panic with context values
 					requestID := GetRequestID(ctx)
 					userID := GetUserID(ctx)
-					
+
 					logger.Errorf(ctx, "[http.panic] Recovered from panic: %v, request_id: %s, user_id: %s, method: %s, path: %s",
 						rec,
 						requestID,
 						userID,
 						r.Method,
 						r.URL.Path)
-						
+
 					// Return a 500 error
 					http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 					err = fmt.Errorf("panic: %v", rec)
