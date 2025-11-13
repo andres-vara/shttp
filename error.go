@@ -2,7 +2,7 @@ package shttp
 
 // HTTPError represents an HTTP error with a message and status code
 type HTTPError struct {
-	Message string
+	Message    string
 	StatusCode int
 }
 
@@ -18,4 +18,3 @@ func NewHTTPError(statusCode int, message string) error {
 		StatusCode: statusCode,
 	}
 }
-

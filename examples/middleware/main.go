@@ -38,19 +38,19 @@ func main() {
 	// Add middleware to the server
 	// 1. Request ID middleware adds a unique ID to each request
 	server.Use(shttp.RequestIDMiddleware())
-	
+
 	// 2. Recovery middleware catches panics in handlers
 	server.Use(shttp.RecoveryMiddleware(logger))
-	
+
 	// 3. Logging middleware logs request details
 	server.Use(shttp.LoggingMiddleware(logger))
-	
+
 	// 4. CORS middleware for cross-origin requests
 	server.Use(shttp.CORSMiddleware([]string{"*"}))
-	
+
 	// 5. Timeout middleware sets a timeout for request processing
 	server.Use(shttp.TimeoutMiddleware(5 * time.Second))
-	
+
 	// 6. Custom middleware
 	server.Use(customHeaderMiddleware("X-Server", "shttp-example"))
 
@@ -90,7 +90,7 @@ func main() {
 // helloWorldHandler returns a simple hello world message
 func helloWorldHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	requestID := shttp.GetRequestID(ctx)
-	
+
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintf(w, "Hello, World! (Request ID: %s)\n", requestID)
@@ -123,4 +123,4 @@ func customHeaderMiddleware(headerName, headerValue string) shttp.Middleware {
 			return next(ctx, w, r)
 		}
 	}
-} 
+}

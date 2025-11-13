@@ -65,7 +65,6 @@ func TestNew(t *testing.T) {
 	}
 }
 
-
 func TestRouterMiddleware(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -191,4 +190,4 @@ func TestRouterMiddleware(t *testing.T) {
 			}
 		})
 	}
-} 
+}

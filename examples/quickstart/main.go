@@ -27,4 +27,4 @@ func main() {
 	if err := server.Start(); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
-} 
+}

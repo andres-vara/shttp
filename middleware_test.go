@@ -70,7 +70,7 @@ func TestRequestIDMiddleware(t *testing.T) {
 			},
 		},
 		{
-			name:           "Adds client IP to context",
+			name: "Adds client IP to context",
 			handler: func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 				// Extract the client IP from the context
 				clientIP := GetClientIP(ctx)
@@ -170,18 +170,18 @@ func TestLoggerMiddleware(t *testing.T) {
 	var logOutput strings.Builder
 
 	logger := slogr.New(&logOutput, &slogr.Options{
-		Level: slog.LevelDebug,
+		Level:       slog.LevelDebug,
 		HandlerType: slogr.HandlerTypeJSON,
 	})
 
 	tests := []struct {
-		name           string
-		handler        Handler
-		wantStatusCode int
+		name            string
+		handler         Handler
+		wantStatusCode  int
 		wantLogContains string
 	}{
 		{
-			name:           "Adds logger to context",
+			name: "Adds logger to context",
 			handler: func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 				// Get the logger from context and log something
 				if ctxLogger, ok := ctx.Value(LoggerKey).(*slogr.Logger); ok && ctxLogger != nil {
@@ -191,7 +191,7 @@ func TestLoggerMiddleware(t *testing.T) {
 				}
 				return fmt.Errorf("logger not found in context")
 			},
-			wantStatusCode: http.StatusOK,
+			wantStatusCode:  http.StatusOK,
 			wantLogContains: "Test log from handler",
 		},
 	}
@@ -227,11 +227,11 @@ func TestLoggingMiddleware(t *testing.T) {
 	logger := slogr.New(&logOutput, slogr.DefaultOptions())
 
 	tests := []struct {
-		name              string
-		setupContext      func(context.Context) context.Context
-		handler           Handler
-		wantStatusCode    int
-		wantLogContains   []string
+		name               string
+		setupContext       func(context.Context) context.Context
+		handler            Handler
+		wantStatusCode     int
+		wantLogContains    []string
 		wantLogNotContains []string
 	}{
 		{
@@ -242,7 +242,7 @@ func TestLoggingMiddleware(t *testing.T) {
 				ctx = context.WithValue(ctx, ClientIPKey, "127.0.0.1")
 				return ctx
 			},
-			handler: simpleHandler("success"),
+			handler:        simpleHandler("success"),
 			wantStatusCode: http.StatusOK,
 			wantLogContains: []string{
 				"[http.request]",
@@ -266,7 +266,7 @@ func TestLoggingMiddleware(t *testing.T) {
 				ctx = context.WithValue(ctx, ClientIPKey, "127.0.0.1")
 				return ctx
 			},
-			handler: errorHandler("test error"),
+			handler:        errorHandler("test error"),
 			wantStatusCode: http.StatusInternalServerError,
 			wantLogContains: []string{
 				"[http.request]",
@@ -327,10 +327,10 @@ func TestRecoveryMiddleware(t *testing.T) {
 	logger := slogr.New(&logOutput, slogr.DefaultOptions())
 
 	tests := []struct {
-		name           string
-		setupContext   func(context.Context) context.Context
-		handler        Handler
-		wantStatusCode int
+		name            string
+		setupContext    func(context.Context) context.Context
+		handler         Handler
+		wantStatusCode  int
 		wantLogContains []string
 	}{
 		{
@@ -357,8 +357,8 @@ func TestRecoveryMiddleware(t *testing.T) {
 			setupContext: func(ctx context.Context) context.Context {
 				return ctx
 			},
-			handler: simpleHandler("normal"),
-			wantStatusCode: http.StatusOK,
+			handler:         simpleHandler("normal"),
+			wantStatusCode:  http.StatusOK,
 			wantLogContains: []string{},
 		},
 	}

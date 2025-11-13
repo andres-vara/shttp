@@ -2,6 +2,7 @@ package shttp
 
 import (
 	"net/http"
+	"strings"
 )
 
 // Router handles HTTP routing
@@ -46,14 +47,23 @@ func (r *Router) Handle(method, path string, handler Handler) {
 			return
 		}
 
-		ctx := req.Context()
+		// If the registered pattern contains path parameters, extract them
+		// from the actual request path and inject them into the request context.
+		reqToUse := req
+		if strings.Contains(path, "{") && strings.Contains(path, "}") {
+			if params := extractPathParams(path, req.URL.Path); len(params) > 0 {
+				reqToUse = SetPathValues(req, params)
+			}
+		}
+
+		ctx := reqToUse.Context()
 		handlerWithMiddleware := r.applyMiddleware(handler)
 
 		// Create a new response writer to track whether the header has been written.
 		rw := &responseWriter{ResponseWriter: w}
 
 		// Call the handler with the wrapped response writer.
-		if err := handlerWithMiddleware(ctx, rw, req); err != nil {
+		if err := handlerWithMiddleware(ctx, rw, reqToUse); err != nil {
 			// If the header has not been written, write the error to the response.
 			if !rw.wroteHeader {
 				if httpErr, ok := err.(HTTPError); ok {
@@ -95,12 +105,19 @@ func (r *Router) PATCH(path string, handler Handler) {
 // Internally it registers a single handler without method filtering.
 func (r *Router) ANY(path string, handler Handler) {
 	r.mux.HandleFunc(path, func(w http.ResponseWriter, req *http.Request) {
-		ctx := req.Context()
+		reqToUse := req
+		if strings.Contains(path, "{") && strings.Contains(path, "}") {
+			if params := extractPathParams(path, req.URL.Path); len(params) > 0 {
+				reqToUse = SetPathValues(req, params)
+			}
+		}
+
+		ctx := reqToUse.Context()
 		handlerWithMiddleware := r.applyMiddleware(handler)
 
 		// Wrap the response writer to track header writes.
 		rw := &responseWriter{ResponseWriter: w}
-		if err := handlerWithMiddleware(ctx, rw, req); err != nil {
+		if err := handlerWithMiddleware(ctx, rw, reqToUse); err != nil {
 			if !rw.wroteHeader {
 				if httpErr, ok := err.(HTTPError); ok {
 					http.Error(w, httpErr.Message, httpErr.StatusCode)
@@ -115,4 +132,4 @@ func (r *Router) ANY(path string, handler Handler) {
 // Use adds middleware to the router
 func (r *Router) Use(middleware ...Middleware) {
 	r.middleware = append(r.middleware, middleware...)
-} 
+}

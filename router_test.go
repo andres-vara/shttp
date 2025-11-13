@@ -11,7 +11,6 @@ import (
 	"github.com/andres-vara/slogr"
 )
 
-
 func TestServerRouting(t *testing.T) {
 	// Test cases for HTTP method registration
 	tests := []struct {
@@ -45,7 +44,7 @@ func TestServerRouting(t *testing.T) {
 			path:   "/test/{param1}",
 			setupServer: func(s *Server) {
 				s.GET("/test/{param1}", func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-					param1 := r.PathValue("param1")
+					param1 := PathValue(r, "param1")
 					w.Write([]byte(param1))
 					return nil
 				})
@@ -193,5 +192,3 @@ func TestServerRouting(t *testing.T) {
 		})
 	}
 }
-
-

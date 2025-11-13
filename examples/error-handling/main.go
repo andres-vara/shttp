@@ -91,7 +91,6 @@ func main() {
 		log.Fatalf("Server shutdown failed: %v", err)
 	}
 
-
 	log.Println("Server gracefully stopped")
 }
 
@@ -151,4 +150,4 @@ func unauthorizedHandler(ctx context.Context, w http.ResponseWriter, r *http.Req
 
 func serverErrorHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
 	return errors.New("unexpected internal server error occurred")
-} 
+}

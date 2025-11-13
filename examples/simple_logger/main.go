@@ -35,13 +35,13 @@ func main() {
 		// Try to get logger from context
 		ctx := r.Context()
 		loggerFromCtx := GetLogger(ctx)
-		
+
 		if loggerFromCtx == nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintln(w, "Logger not found in context")
 			return
 		}
-		
+
 		// Logger was found!
 		loggerFromCtx.Info(ctx, "Handler called with logger from context")
 		w.WriteHeader(http.StatusOK)
@@ -50,21 +50,21 @@ func main() {
 
 	// Wrap our handler in middleware
 	originalHandler := http.DefaultServeMux
-	
+
 	// Create middleware handler that adds logger to context
 	wrappedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Add logger to context
 		ctx := context.WithValue(r.Context(), loggerKey, logger)
-		
+
 		// Call the next handler with updated context
 		originalHandler.ServeHTTP(w, r.WithContext(ctx))
 	})
 
 	// Log startup
 	logger.Info(context.Background(), "Server starting on :8080")
-	
+
 	// Start server
 	if err := http.ListenAndServe(":8080", wrappedHandler); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
-} 
+}

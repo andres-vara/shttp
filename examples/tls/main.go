@@ -142,4 +142,4 @@ func generateSelfSignedCert() (string, string, error) {
 	keyOut.Close()
 
 	return certFile, keyFile, nil
-} 
+}
