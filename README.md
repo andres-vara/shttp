@@ -16,120 +16,119 @@ func setPathParams(r *http.Request, params map[string]string) *http.Request {
 func GetPathParam(r *http.Request, key string) string {
 	if params, ok := r.Context().Value(pathParamsKey{}).(map[string]string); ok {
 		return params[key]
+	# shttp
+
+	[![CI Status](https://github.com/andres-vara/shttp/actions/workflows/ci.yml/badge.svg)](https://github.com/andres-vara/shttp/actions/workflows/ci.yml)
+	[![Go Report Card](https://goreportcard.com/badge/github.com/andres-vara/shttp)](https://goreportcard.com/report/github.com/andres-vara/shttp)
+	[![PkgGoDev](https://pkg.go.dev/badge/github.com/andres-vara/shttp)](https://pkg.go.dev/github.com/andres-vara/shttp)
+	[![License](https://img.shields.io/github/license/andres-vara/shttp.svg)](LICENSE)
+
+	Lightweight HTTP helpers around the standard library `net/http`.
+
+	Key features
+	- Simple router built on `http.ServeMux` with optional path-parameter extraction.
+	- Middleware helpers (request ID, logging, recovery, CORS, timeout, etc.).
+	- Tiny surface area so it is easy to embed in small services and tools.
+
+	Quick start
+
+	Install with Go modules:
+
+	```sh
+	go get github.com/andres-vara/shttp
+	```
+
+	Example: Basic handler with path parameter
+
+	```go
+	package main
+
+	import (
+		"context"
+		"net/http"
+		"github.com/andres-vara/shttp"
+	)
+
+	func main() {
+		r := shttp.NewRouter()
+
+		r.GET("/hello/{name}", func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+			name := shttp.PathValue(r, "name")
+			w.Write([]byte("hello " + name))
+			return nil
+		})
+
+		http.ListenAndServe(":8080", r)
 	}
-	return ""
-}
+	```
 
+	Example: Registering middleware (request-id + structured logger)
 
-// server.go (or the file where the router is implemented)
-package shttp
+	```go
+	package main
 
-import (
-	"strings"
-)
+	import (
+		"context"
+		"net/http"
+		"github.com/andres-vara/shttp"
+		"github.com/andres-vara/slogr"
+	)
 
-type route struct {
-	method   string
-	pattern  string
-	segments []segment
-	handler  Handler
-}
+	func main() {
+		logger := slogr.New()
+		r := shttp.NewRouter()
 
-type segment struct {
-	isParam bool
-	value   string
-}
+		// Apply middleware globally on the router
+		r.Use(
+			shttp.RequestIDMiddleware(),
+			shttp.LoggerMiddleware(logger),
+		)
 
-func parsePattern(pattern string) []segment {
-	parts := strings.Split(strings.Trim(pattern, "/"), "/")
-	segments := make([]segment, len(parts))
-	for i, part := range parts {
-		if strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}") {
-			segments[i] = segment{isParam: true, value: part[1 : len(part)-1]}
-		} else {
-			segments[i] = segment{isParam: false, value: part}
-		}
+		r.GET("/users/{id}", func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+			id := shttp.PathValue(r, "id")
+			w.Write([]byte("user: " + id))
+			return nil
+		})
+
+		http.ListenAndServe(":8080", r)
 	}
-	return segments
-}
+	```
 
-func matchRoute(path string, segments []segment) (bool, map[string]string) {
-	parts := strings.Split(strings.Trim(path, "/"), "/")
-	if len(parts) != len(segments) {
-		return false, nil
-	}
-	params := make(map[string]string)
-	for i, part := range parts {
-		seg := segments[i]
-		if seg.isParam {
-			params[seg.value] = part
-		} else if seg.value != part {
-			return false, nil
-		}
-	}
-	return true, params
-}
+	Path parameters
 
-// In your server's main request handler loop (e.g. ServeHTTP), example usage:
-//
-// func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-//     for _, route := range s.routes {
-//         if route.method != r.Method {
-//             continue
+	Define routes using `{param}` segments (for example `/users/{id}`). The router will extract path parameters and make them available via `shttp.PathValue(r, "id")`.
+
+	Running tests
+
+	From the repository root:
+
+	```sh
+	go test ./... -v
+	```
+
+	CI
+
+	This repository includes a GitHub Actions workflow (`.github/workflows/ci.yml`) that runs the `slogr` and `shttp` test suites. The badge at the top of this README reflects the latest workflow status.
+
+	Examples
+
+	- `examples/basic`: minimal server using `shttp.NewRouter()`.
+	- `examples/middleware`: demonstrates middleware stacking and request-scoped logging.
+
+	Contributing
+
+	Contributions welcome — please open issues or PRs. For local development you can use a `replace` directive in `go.mod` to point to a locally cloned `slogr`:
+
+	```go
+	replace github.com/andres-vara/slogr => ../slogr
+	```
+
+	License
+
+	MIT
+
+	---
+	Updated README (docs branch) — 2025-11-13
 //         }
+
 //         matched, params := matchRoute(r.URL.Path, route.segments)
-//         if matched {
-//             r = setPathParams(r, params)
-//             err := route.handler(r.Context(), w, r)
-//             if err != nil {
-//                 // handle error
-//             }
-//             return
-//         }
-//     }
-//     http.NotFound(w, r)
-// }
-
-
-// pathparams_test.go
-package shttp
-
-import (
-	"net/http/httptest"
-	"testing"
-)
-
-func TestGetPathParam(t *testing.T) {
-	r := httptest.NewRequest("GET", "/api/123", nil)
-	r = setPathParams(r, map[string]string{"id": "123"})
-
-	id := GetPathParam(r, "id")
-	if id != "123" {
-		t.Errorf("expected id to be '123', got '%s'", id)
-	}
-}
-
-func TestMatchRoute(t *testing.T) {
-	pattern := "/api/{id}"
-	segments := parsePattern(pattern)
-
-	matched, params := matchRoute("/api/456", segments)
-	if !matched {
-		t.Fatalf("route should have matched")
-	}
-
-	if params["id"] != "456" {
-		t.Errorf("expected param 'id' = '456', got '%s'", params["id"])
-	}
-}
-
-
-# improvement recomendations
-
-
-   1. API Consistency: Make Router.Use variadic like Server.Use.
-   2. Code Consolidation: Consider a single Handle method in the router.
-   3. Logging: Make the context-aware logging more explicit.
-   4. Configuration: Explore the functional options pattern for server configuration.
-   5. Documentation: Add more examples and package-level comments.
-
