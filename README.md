@@ -16,120 +16,66 @@ func setPathParams(r *http.Request, params map[string]string) *http.Request {
 func GetPathParam(r *http.Request, key string) string {
 	if params, ok := r.Context().Value(pathParamsKey{}).(map[string]string); ok {
 		return params[key]
+	# shttp
+
+	Lightweight HTTP helpers around the standard library `net/http`.
+
+	Features
+	- Simple router built on `http.ServeMux` with optional path-parameter extraction.
+	- Middleware helpers (request ID, logging, recovery, CORS, timeout, etc.).
+	- Integration-friendly: small surface area and no external router dependencies.
+
+	Quick start
+	1. Install (use Go modules):
+
+	```sh
+	go get github.com/andres-vara/shttp
+	```
+
+	2. Create a server and register handlers:
+
+	```go
+	package main
+
+	import (
+	  "context"
+	  "net/http"
+	  "github.com/andres-vara/shttp"
+	)
+
+	func main() {
+	  r := shttp.NewRouter()
+	  r.GET("/hello/{name}", func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+		name := shttp.PathValue(r, "name")
+		w.Write([]byte("hello " + name))
+		return nil
+	  })
+	  http.ListenAndServe(":8080", r)
 	}
-	return ""
-}
+	```
 
+	Path parameters
+	- Define routes with `{param}` segments (for example `/users/{id}`). The router will extract path parameters and make them available via `shttp.PathValue(r, "id")`.
 
-// server.go (or the file where the router is implemented)
-package shttp
+	Middleware
+	- Use the provided middleware helpers to add structured logging, request IDs, and other cross-cutting concerns.
 
-import (
-	"strings"
-)
+	Running tests
 
-type route struct {
-	method   string
-	pattern  string
-	segments []segment
-	handler  Handler
-}
+	From the repository root:
 
-type segment struct {
-	isParam bool
-	value   string
-}
+	```sh
+	go test ./... -v
+	```
 
-func parsePattern(pattern string) []segment {
-	parts := strings.Split(strings.Trim(pattern, "/"), "/")
-	segments := make([]segment, len(parts))
-	for i, part := range parts {
-		if strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}") {
-			segments[i] = segment{isParam: true, value: part[1 : len(part)-1]}
-		} else {
-			segments[i] = segment{isParam: false, value: part}
-		}
-	}
-	return segments
-}
+	Contributing
+	- Open issues or PRs. For local development you can use a `replace` directive in `go.mod` to point to a local `slogr` clone if needed.
 
-func matchRoute(path string, segments []segment) (bool, map[string]string) {
-	parts := strings.Split(strings.Trim(path, "/"), "/")
-	if len(parts) != len(segments) {
-		return false, nil
-	}
-	params := make(map[string]string)
-	for i, part := range parts {
-		seg := segments[i]
-		if seg.isParam {
-			params[seg.value] = part
-		} else if seg.value != part {
-			return false, nil
-		}
-	}
-	return true, params
-}
+	License
+	- MIT
 
-// In your server's main request handler loop (e.g. ServeHTTP), example usage:
-//
-// func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-//     for _, route := range s.routes {
-//         if route.method != r.Method {
-//             continue
+	---
+	Updated README (docs branch) — 2025-11-13
 //         }
+
 //         matched, params := matchRoute(r.URL.Path, route.segments)
-//         if matched {
-//             r = setPathParams(r, params)
-//             err := route.handler(r.Context(), w, r)
-//             if err != nil {
-//                 // handle error
-//             }
-//             return
-//         }
-//     }
-//     http.NotFound(w, r)
-// }
-
-
-// pathparams_test.go
-package shttp
-
-import (
-	"net/http/httptest"
-	"testing"
-)
-
-func TestGetPathParam(t *testing.T) {
-	r := httptest.NewRequest("GET", "/api/123", nil)
-	r = setPathParams(r, map[string]string{"id": "123"})
-
-	id := GetPathParam(r, "id")
-	if id != "123" {
-		t.Errorf("expected id to be '123', got '%s'", id)
-	}
-}
-
-func TestMatchRoute(t *testing.T) {
-	pattern := "/api/{id}"
-	segments := parsePattern(pattern)
-
-	matched, params := matchRoute("/api/456", segments)
-	if !matched {
-		t.Fatalf("route should have matched")
-	}
-
-	if params["id"] != "456" {
-		t.Errorf("expected param 'id' = '456', got '%s'", params["id"])
-	}
-}
-
-
-# improvement recomendations
-
-
-   1. API Consistency: Make Router.Use variadic like Server.Use.
-   2. Code Consolidation: Consider a single Handle method in the router.
-   3. Logging: Make the context-aware logging more explicit.
-   4. Configuration: Explore the functional options pattern for server configuration.
-   5. Documentation: Add more examples and package-level comments.
-
