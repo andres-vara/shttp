@@ -1,18 +1,18 @@
 package main
 
 import (
-"context"
-"fmt"
-"log"
-"log/slog"
-"net/http"
-"os"
-"os/signal"
-"syscall"
-"time"
+	"context"
+	"fmt"
+	"log"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-"github.com/andres-vara/shttp"
-"github.com/andres-vara/slogr"
+	"github.com/andres-vara/shttp"
+	"github.com/andres-vara/slogr"
 )
 
 func main() {
@@ -34,7 +34,7 @@ func main() {
 			// - HandlerType: HandlerTypeJSON or HandlerTypeText
 			// - Level: slog.LevelDebug, slog.LevelInfo, etc.
 			// - AddLevelPrefix: true/false to add level prefix to messages
-			Level:          slog.LevelDebug, // Use DEBUG level to see all logs
+			Level:          slog.LevelDebug,       // Use DEBUG level to see all logs
 			HandlerType:    slogr.HandlerTypeJSON, // Use JSON for structured logs
 			AddLevelPrefix: true,
 		},
@@ -44,49 +44,49 @@ func main() {
 	server := shttp.New(ctx, config)
 
 	// Use the default middleware stack with the server's logger
-server.Use(shttp.DefaultMiddlewareStack(server.GetLogger())...)
+	server.Use(shttp.DefaultMiddlewareStack(server.GetLogger())...)
 
-// Register routes
-server.GET("/", homeHandler)
-server.GET("/health", healthHandler)
-server.GET("/debug", debugHandler)
+	// Register routes
+	server.GET("/", homeHandler)
+	server.GET("/health", healthHandler)
+	server.GET("/debug", debugHandler)
 
-// Set up a channel to handle shutdown signals
-done := make(chan os.Signal, 1)
-signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+	// Set up a channel to handle shutdown signals
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-// Start the server in a goroutine
-go func() {
-log.Println("Starting server at http://localhost:8080")
-log.Println("Server is configured to use JSON logging format with DEBUG level")
-log.Println("Try:")
-log.Println("  curl http://localhost:8080/")
-log.Println("  curl http://localhost:8080/health")
-log.Println("  curl http://localhost:8080/debug")
-if err := server.Start(); err != nil && err != http.ErrServerClosed {
-log.Printf("Server error: %v", err)
-}
-}()
+	// Start the server in a goroutine
+	go func() {
+		log.Println("Starting server at http://localhost:8080")
+		log.Println("Server is configured to use JSON logging format with DEBUG level")
+		log.Println("Try:")
+		log.Println("  curl http://localhost:8080/")
+		log.Println("  curl http://localhost:8080/health")
+		log.Println("  curl http://localhost:8080/debug")
+		if err := server.Start(); err != nil && err != http.ErrServerClosed {
+			log.Printf("Server error: %v", err)
+		}
+	}()
 
-// Wait for shutdown signal
-<-done
-log.Println("Shutting down server...")
-if err := server.Shutdown(context.Background()); err != nil {
-log.Printf("Shutdown error: %v", err)
-}
+	// Wait for shutdown signal
+	<-done
+	log.Println("Shutting down server...")
+	if err := server.Shutdown(context.Background()); err != nil {
+		log.Printf("Shutdown error: %v", err)
+	}
 }
 
 // homeHandler shows basic logging with auto-injected attributes
 func homeHandler(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-logger := shttp.GetLogger(ctx)
-if logger == nil {
-return fmt.Errorf("logger not found in context")
-}
+	logger := shttp.GetLogger(ctx)
+	if logger == nil {
+		return fmt.Errorf("logger not found in context")
+	}
 
-logger.Info(ctx, "Handling home request")
+	logger.Info(ctx, "Handling home request")
 
-w.Header().Set("Content-Type", "text/html; charset=utf-8")
-fmt.Fprintln(w, `<html>
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprintln(w, `<html>
 <head><title>Config-Driven Logger Options Example</title></head>
 <body>
 <h1>Config-Driven Logger Options Example</h1>

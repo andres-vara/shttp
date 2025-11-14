@@ -1,17 +1,17 @@
 package main
 
 import (
-"context"
-"fmt"
-"log"
-"net/http"
-"os"
-"os/signal"
-"syscall"
-"time"
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-"github.com/andres-vara/shttp"
-"github.com/andres-vara/slogr"
+	"github.com/andres-vara/shttp"
+	"github.com/andres-vara/slogr"
 )
 
 func main() {
