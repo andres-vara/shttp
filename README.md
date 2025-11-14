@@ -77,6 +77,57 @@ Path parameters
 
 Define routes using `{param}` segments (for example `/users/{id}`). The router will extract path parameters and make them available via `shttp.PathValue(r, "id").
 
+## Unified Logging with slogr
+
+shttp integrates seamlessly with the [slogr](https://github.com/andres-vara/slogr) structured logging package. Use `DefaultMiddlewareStack()` to get a ready-to-use middleware stack that includes automatic request ID generation, user context extraction, structured logging with auto-injected request metadata (request_id, user_id, client_ip), request/response logging, and panic recovery.
+
+**Example: Quick start with DefaultMiddlewareStack**
+
+```go
+package main
+
+import (
+	"context"
+	"net/http"
+	"github.com/andres-vara/shttp"
+	"github.com/andres-vara/slogr"
+)
+
+func main() {
+	logger := slogr.New(os.Stdout, slogr.DefaultOptions())
+	server := shttp.New(context.Background(), nil)
+	
+	// Use the recommended middleware stack in one line!
+	server.Use(shttp.DefaultMiddlewareStack(logger)...)
+	
+	server.GET("/users/{id}", func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
+		logger := shttp.GetLogger(ctx) // request_id, user_id, client_ip auto-injected
+		logger.Info(ctx, "Fetching user", "id", shttp.PathValue(r, "id"))
+		w.Write([]byte("user data"))
+		return nil
+	})
+	
+	server.Start()
+}
+```
+
+**Configure logging via Server.Config**
+
+Control logging format (JSON/Text) and level without code changes:
+
+```go
+config := &shttp.Config{
+	Addr: ":8080",
+	LoggerOptions: &slogr.Options{
+		Level:       slog.LevelDebug,
+		HandlerType: slogr.HandlerTypeJSON, // Switch to HandlerTypeText for human-readable output
+		AddLevelPrefix: true,
+	},
+}
+server := shttp.New(ctx, config)
+server.Use(shttp.DefaultMiddlewareStack(server.GetLogger())...)
+```
+
 Running tests
 
 From the repository root:
@@ -93,6 +144,8 @@ Examples
 
 - `examples/basic`: minimal server using `shttp.NewRouter()`.
 - `examples/middleware`: demonstrates middleware stacking and request-scoped logging.
+- `examples/default-middleware`: showcases `DefaultMiddlewareStack()` for quick integration with auto-injected request attributes.
+- `examples/config-logger`: demonstrates config-driven logger options (JSON/Text format, level control).
 
 Contributing
 

@@ -164,3 +164,8 @@ func (s *Server) Handle(method, path string, handler Handler) {
 func (s *Server) Use(middleware ...Middleware) {
 	s.router.Use(middleware...)
 }
+
+// GetLogger returns the logger instance used by the server
+func (s *Server) GetLogger() *slogr.Logger {
+	return s.logger
+}
