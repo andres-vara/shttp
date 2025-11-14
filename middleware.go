@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -55,13 +56,24 @@ func GetClientIP(ctx context.Context) string {
 	return ""
 }
 
-// GetLogger retrieves the logger from the context
+// GetLogger retrieves the logger from the context.
+// Prefers slogr.FromContext for unified access across packages.
 func GetLogger(ctx context.Context) *slogr.Logger {
+	// Try slogr's context key first for unified access
+	if logger := slogr.FromContext(ctx); logger != nil {
+		return logger
+	}
+	// Fallback to shttp's internal key for backward compatibility
 	if logger, ok := ctx.Value(LoggerKey).(*slogr.Logger); ok {
 		return logger
 	}
-	// Return nil if logger is not found in context
 	return nil
+}
+
+// WithLogger returns a new context with the logger added, using slogr's unified key.
+// This delegates to slogr.WithLogger for consistency across packages.
+func WithLogger(ctx context.Context, logger *slogr.Logger) context.Context {
+	return slogr.WithLogger(ctx, logger)
 }
 
 // generates a random request ID
@@ -99,14 +111,19 @@ func RequestIDMiddleware() Middleware {
 }
 
 // ContextualLogger creates a request-scoped logger with contextual information
-// like request ID, user ID, and client IP, and adds it to the context.
+// (request ID, user ID, client IP) as structured attributes and adds it to the context.
 // It assumes that middleware like RequestIDMiddleware and UserContextMiddleware have already been run.
 func ContextualLogger(baseLogger *slogr.Logger) Middleware {
 	return func(next Handler) Handler {
 		return func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-			// For compatibility with current slogr, attach the provided logger as-is.
-			// Context values (requestID, userID, clientIP) can be retrieved inside handlers if needed.
-			ctx = context.WithValue(ctx, LoggerKey, baseLogger)
+			// Inject request metadata as structured attributes
+			ctx = slogr.WithAttrs(ctx,
+				slog.String("request_id", GetRequestID(ctx)),
+				slog.String("user_id", GetUserID(ctx)),
+				slog.String("client_ip", GetClientIP(ctx)),
+			)
+			// Add logger to context using unified slogr key
+			ctx = slogr.WithLogger(ctx, baseLogger)
 			return next(ctx, w, r)
 		}
 	}
@@ -266,4 +283,18 @@ func (w *responseWriter) Write(b []byte) (int, error) {
 		w.WriteHeader(http.StatusOK)
 	}
 	return w.ResponseWriter.Write(b)
+}
+
+// DefaultMiddlewareStack returns a recommended middleware stack for typical HTTP services.
+// It includes: request ID generation, user context extraction, contextual logger injection
+// with request attributes, request/response logging, and panic recovery.
+// The stack is ordered for optimal request flow and logging visibility.
+func DefaultMiddlewareStack(logger *slogr.Logger) []Middleware {
+	return []Middleware{
+		RequestIDMiddleware(),
+		UserContextMiddleware(),
+		ContextualLogger(logger),
+		LoggingMiddleware(logger),
+		RecoveryMiddleware(logger),
+	}
 }

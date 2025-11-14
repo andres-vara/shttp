@@ -183,8 +183,9 @@ func TestLoggerMiddleware(t *testing.T) {
 		{
 			name: "Adds logger to context",
 			handler: func(ctx context.Context, w http.ResponseWriter, r *http.Request) error {
-				// Get the logger from context and log something
-				if ctxLogger, ok := ctx.Value(LoggerKey).(*slogr.Logger); ok && ctxLogger != nil {
+				// Get the logger from context using unified accessor and log something
+				ctxLogger := GetLogger(ctx)
+				if ctxLogger != nil {
 					ctxLogger.Info(ctx, "Test log from handler")
 					w.Write([]byte("logged"))
 					return nil
