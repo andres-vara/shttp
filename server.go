@@ -45,6 +45,10 @@ type Config struct {
 
 	// Logger instance to use
 	Logger *slogr.Logger
+
+	// LoggerOptions for customizing logger creation (level, handler type, etc.)
+	// If provided and Logger is nil, a new logger will be created with these options
+	LoggerOptions *slogr.Options
 }
 
 // DefaultConfig returns a default server configuration
@@ -56,6 +60,7 @@ func DefaultConfig() *Config {
 		IdleTimeout:    120 * time.Second,
 		MaxHeaderBytes: 1 << 20, // 1MB
 		Logger:         slogr.New(os.Stdout, slogr.DefaultOptions()),
+		LoggerOptions:  nil, // Use Logger if provided
 	}
 }
 
@@ -63,6 +68,16 @@ func DefaultConfig() *Config {
 func New(ctx context.Context, config *Config) *Server {
 	if config == nil {
 		config = DefaultConfig()
+	}
+
+	// If no logger is set but LoggerOptions are provided, create a logger with those options
+	if config.Logger == nil && config.LoggerOptions != nil {
+		config.Logger = slogr.New(os.Stdout, config.LoggerOptions)
+	}
+
+	// Ensure we always have a logger
+	if config.Logger == nil {
+		config.Logger = slogr.New(os.Stdout, slogr.DefaultOptions())
 	}
 
 	// Create router
