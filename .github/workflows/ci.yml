@@ -89,12 +89,13 @@ jobs:
       - name: Create tag and release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION=${{ steps.next_version.outputs.version }}
-          git config --global credential.helper store
-          echo "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com" > ~/.git-credentials
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Update git remote to use token for authentication
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git"
           git tag -a "$VERSION" -m "Release $VERSION"
           git push origin "$VERSION"
           gh release create "$VERSION" --title "$VERSION" --notes "Automated release for commit $(git rev-parse --short HEAD)"
