@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -28,6 +29,7 @@ func main() {
 	r.Use(middleware.RequestID)
 	r.Use(requestIDToSlogr)
 	r.Use(slogrContextMiddleware(logger))
+	r.Use(AuthMiddleware)
 	r.Use(loggingMiddleware)
 	r.Use(middleware.Recoverer)
 
@@ -351,6 +353,83 @@ func loggingMiddleware(next http.Handler) http.Handler {
 			slog.Int("status", wrapped.statusCode),
 			slog.Int64("duration_ms", duration))
 	})
+}
+
+// TokenClaims represents the claims extracted from the authorization token
+type TokenClaims struct {
+	ClientIP  string `json:"client_ip"`
+	RequestID string `json:"request_id"`
+}
+
+// AuthMiddleware validates the Authorization header token and extracts claims
+// Expected header format: "Bearer {token}"
+// For demo purposes, we parse a simple JSON token format
+func AuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		log := slogr.FromContext(ctx)
+		if log == nil {
+			log = slogr.GetDefaultLogger()
+		}
+
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			log.Warn(ctx, "missing_authorization_header")
+			http.Error(w, "missing Authorization header", http.StatusUnauthorized)
+			return
+		}
+
+		// Extract token from "Bearer {token}" format
+		parts := strings.Split(authHeader, " ")
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			log.Warn(ctx, "invalid_authorization_format")
+			http.Error(w, "invalid Authorization format", http.StatusUnauthorized)
+			return
+		}
+
+		token := parts[1]
+
+		// For demo: parse token as base64-encoded JSON
+		// In production, you would use JWT library and verify signature
+		claims, err := parseToken(token)
+		if err != nil {
+			log.Warn(ctx, "invalid_token",
+				slog.String("error", err.Error()))
+			http.Error(w, "invalid token", http.StatusUnauthorized)
+			return
+		}
+
+		// Inject claims into context as attributes
+		ctx = slogr.WithAttrs(ctx,
+			slog.String("client_ip", claims.ClientIP),
+			slog.String("request_id_claim", claims.RequestID))
+
+		log.Info(ctx, "auth_success",
+			slog.String("client_ip", claims.ClientIP))
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// parseToken decodes the token (demo implementation)
+// In production, use a proper JWT library like github.com/golang-jwt/jwt
+func parseToken(token string) (*TokenClaims, error) {
+	// Demo: treat token as base64-encoded JSON representation
+	// For example: token = base64("{\"client_ip\":\"192.168.1.1\",\"request_id\":\"req-123\"}")
+	// In production, this would be JWT verification with signature validation
+
+	// For demo purposes, we'll accept a simple JSON token format
+	// Expected format: {"client_ip":"192.168.1.1","request_id":"req-123"}
+	var claims TokenClaims
+	if err := json.Unmarshal([]byte(token), &claims); err != nil {
+		return nil, fmt.Errorf("failed to parse token claims: %w", err)
+	}
+
+	if claims.ClientIP == "" || claims.RequestID == "" {
+		return nil, fmt.Errorf("missing required claim fields")
+	}
+
+	return &claims, nil
 }
 
 // responseWriter wraps http.ResponseWriter to capture status code
