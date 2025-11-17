@@ -39,19 +39,22 @@ func main() {
 	// 1. Request ID middleware adds a unique ID to each request
 	server.Use(shttp.RequestIDMiddleware())
 
-	// 2. Recovery middleware catches panics in handlers
+	// 2. Contextual logger middleware adds a logger to the context
+	server.Use(shttp.ContextualLogger(logger))
+
+	// 3. Recovery middleware catches panics in handlers
 	server.Use(shttp.RecoveryMiddleware(logger))
 
-	// 3. Logging middleware logs request details
+	// 4. Logging middleware logs request details
 	server.Use(shttp.LoggingMiddleware(logger))
 
-	// 4. CORS middleware for cross-origin requests
+	// 5. CORS middleware for cross-origin requests
 	server.Use(shttp.CORSMiddleware([]string{"*"}))
 
-	// 5. Timeout middleware sets a timeout for request processing
+	// 6. Timeout middleware sets a timeout for request processing
 	server.Use(shttp.TimeoutMiddleware(5 * time.Second))
 
-	// 6. Custom middleware
+	// 7. Custom middleware
 	server.Use(customHeaderMiddleware("X-Server", "shttp-example"))
 
 	// Register routes
