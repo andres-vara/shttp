@@ -1,2 +1,6 @@
 github.com/andres-vara/slogr v0.0.3 h1:DrtXtpgbgOmdaf7A5Hq3TwSDNikNguSp6KhQxAj2e2Q=
 github.com/andres-vara/slogr v0.0.3/go.mod h1:5ZqrzNnv6ct8daMU2fsWC1QfqSn+kVaKa6PIgADh9bE=
+github.com/go-chi/chi/v5 v5.1.0 h1:acVI1TYaD+hhedDJ3r54HyA6sExp3HfXq7QWEEY/xMw=
+github.com/go-chi/chi/v5 v5.1.0/go.mod h1:DslCQbL2OYiznFReuXYUmQ2hGd1aDpCnlMNITLSKoi8=
+github.com/go-chi/httplog/v3 v3.3.0 h1:Gr6Y7nSzbpyCyRwKPOVKjDH3BH6TH5uvRNDsTZWDpvU=
+github.com/go-chi/httplog/v3 v3.3.0/go.mod h1:N/J1l5l1fozUrqIVuT8Z/HzNeSy8TF2EFyokPLe6y2w=
